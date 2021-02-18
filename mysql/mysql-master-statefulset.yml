@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-master
+  namespace: db
+  labels:
+    app: elasticsearch
+spec:
+  selector:
+    app: mysql-master
+  clusterIP: None
+  ports:
+    - port: 3306
+      name: http-3306
+    - port: 33060
+      name: http-33060
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql-master
+  namespace: db
+  labels:
+    app: mysql-master
+spec:
+  selector:
+    matchLabels:
+      app: mysql-master
+  template:
+    metadata:
+      labels: 
+        app: mysql-master
+    spec:
+      containers:
+      - name: mysql-master
+        image: mysql/mysql-server:5.7
+        ports:
+        - name: http-3306
+          containerPort: 3306
+        - name: http-33060
+          containerPort: 33060
+        volumeMounts:
+        - name: config
+          mountPath: /etc
+          readOnly: true
+        - name: data
+          mountPath: /var/lib/mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: 123456
+        - name: MYSQL_ROOT_HOST
+          value: %
+      volumes:
+      - name: config
+        configMap:
+          name: mysql-master
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      labels:
+        app: mysql-master
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: nfs
+      resources:
+        requests:
+          storage: 10Gi
+
